@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:20px;">
+<div id="log" style="color:#c8a96e;font-family:Georgia;font-size:14px;text-align:center;">tap button</div>
+<button id="btn" style="width:120px;height:120px;border-radius:50%;background:#c8a96e;border:none;font-size:18px;cursor:pointer;">D 73Hz</button>
+<script>
+document.getElementById('btn').addEventListener('click', function() {
+  document.getElementById('log').textContent = 'clicked...';
+  try {
+    var ac = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ac.createOscillator();
+    var gain = ac.createGain();
+    osc.frequency.value = 73.42;
+    osc.type = 'triangle';
+    gain.gain.value = 0.5;
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start();
+    osc.stop(ac.currentTime + 2);
+    document.getElementById('log').textContent = 'playing! state=' + ac.state;
+  } catch(e) {
+    document.getElementById('log').textContent = 'ERROR: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
