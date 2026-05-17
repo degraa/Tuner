@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080808">
+<title>D Standard Tuner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+–bg: #080808;
+–gold: #c8a96e;
+–gold-dim: rgba(200,169,110,0.25);
+–gold-faint: rgba(200,169,110,0.07);
+–white: #e8e0d0;
+–muted: rgba(232,224,208,0.4);
+–green: #4caf87;
+–red: #c0392b;
+–yellow: #e8b84b;
+–font-display: ‘Cinzel’, ‘Georgia’, serif;
+–font-body: ‘Cormorant Garamond’, ‘Georgia’, serif;
+}
+
+html {
+background: #080808 !important;
+background-color: #080808 !important;
+}
+
+body {
+height: 100dvh;
+background: #080808 !important;
+background-color: #080808 !important;
+color: var(–white);
+font-family: var(–font-body);
+overflow: hidden;
+-webkit-tap-highlight-color: transparent;
+user-select: none;
+}
+
+/* Force dark even if prefers-color-scheme is light */
+@media (prefers-color-scheme: light) {
+html, body { background: #080808 !important; }
+}
+
+.app {
+height: 100dvh;
+background: #080808;
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 0 20px 28px;
+}
+
+/* HEADER */
+.header {
+width: 100%;
+padding: 36px 0 20px;
+text-align: center;
+position: relative;
+}
+.header::after {
+content: ‘’;
+position: absolute;
+bottom: 0; left: 50%;
+transform: translateX(-50%);
+width: 60px; height: 1px;
+background: linear-gradient(90deg, transparent, var(–gold), transparent);
+}
+.title {
+font-family: var(–font-display);
+font-size: 11px;
+font-weight: 400;
+letter-spacing: 0.45em;
+color: var(–gold);
+text-transform: uppercase;
+}
+.subtitle {
+font-size: 13px;
+font-style: italic;
+color: var(–muted);
+margin-top: 5px;
+letter-spacing: 0.12em;
+font-family: var(–font-body);
+}
+
+/* METER */
+.meter-section {
+flex: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+width: 100%;
+gap: 10px;
+}
+
+.note-name {
+font-family: var(–font-display);
+font-size: 100px;
+font-weight: 900;
+line-height: 1;
+color: var(–white);
+transition: color 0.15s ease;
+min-height: 100px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.note-name.idle    { color: rgba(232,224,208,0.12); }
+.note-name.in-tune { color: var(–green); }
+
+.cents-label {
+font-size: 15px;
+font-style: italic;
+font-family: var(–font-body);
+color: var(–muted);
+letter-spacing: 0.05em;
+height: 22px;
+transition: color 0.15s;
+}
+.cents-label.in-tune { color: var(–green); }
+.cents-label.off     { color: var(–yellow); }
+
+/* NEEDLE */
+.needle-wrap {
+width: 100%;
+max-width: 300px;
+margin: 6px 0 8px;
+}
+.needle-track {
+width: 100%;
+height: 3px;
+background: rgba(200,169,110,0.1);
+border-radius: 2px;
+position: relative;
+}
+.needle-track::before {
+content: ‘’;
+position: absolute;
+left: 50%; top: 50%;
+transform: translate(-50%, -50%);
+width: 1px; height: 12px;
+background: var(–gold-dim);
+}
+
+.needle-zone {
+position: absolute;
+top: 50%; transform: translateY(-50%);
+height: 3px;
+border-radius: 2px;
+opacity: 0;
+transition: opacity 0.2s;
+}
+.needle-zone.active { opacity: 1; }
+.z-green  { left: calc(50% - 12px); width: 24px; background: var(–green); }
+.z-yl     { right: calc(50% + 12px); width: 38px; background: var(–yellow); }
+.z-yr     { left:  calc(50% + 12px); width: 38px; background: var(–yellow); }
+.z-rl     { right: calc(50% + 50px); left: 0;   background: var(–red); }
+.z-rr     { left:  calc(50% + 50px); right: 0;  background: var(–red); }
+
+.needle {
+position: absolute;
+top: 50%; left: 50%;
+width: 14px; height: 14px;
+background: var(–gold);
+border-radius: 50%;
+transform: translate(-50%, -50%);
+transition: left 0.09s ease-out, background 0.15s;
+box-shadow: 0 0 8px rgba(200,169,110,0.5);
+}
+.needle.in-tune {
+background: var(–green);
+box-shadow: 0 0 14px rgba(76,175,135,0.7);
+}
+
+.meter-labels {
+display: flex;
+justify-content: space-between;
+width: 100%;
+max-width: 300px;
+margin-top: 7px;
+}
+.meter-labels span {
+font-size: 10px;
+color: rgba(232,224,208,0.3);
+font-style: italic;
+font-family: var(–font-body);
+}
+
+.freq {
+font-size: 13px;
+font-style: italic;
+font-family: var(–font-body);
+color: rgba(200,169,110,0.4);
+height: 18px;
+}
+
+/* DIVIDER */
+.divider {
+width: 100%;
+max-width: 300px;
+height: 1px;
+flex-shrink: 0;
+background: linear-gradient(90deg, transparent, rgba(200,169,110,0.2), transparent);
+margin: 14px 0;
+}
+
+/* STRINGS */
+.strings-section { width: 100%; max-width: 360px; flex-shrink: 0; }
+.strings-label {
+font-family: var(–font-display);
+font-size: 9px;
+letter-spacing: 0.45em;
+color: rgba(200,169,110,0.3);
+text-align: center;
+margin-bottom: 12px;
+text-transform: uppercase;
+}
+.strings-grid {
+display: grid;
+grid-template-columns: repeat(6, 1fr);
+gap: 8px;
+}
+.string-btn {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 4px;
+padding: 10px 4px;
+border: 1px solid rgba(200,169,110,0.2);
+background: rgba(200,169,110,0.05);
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.15s;
+}
+.string-btn.active {
+border-color: var(–gold);
+background: rgba(200,169,110,0.1);
+box-shadow: 0 0 10px rgba(200,169,110,0.1);
+}
+.string-btn.in-tune {
+border-color: var(–green);
+background: rgba(76,175,135,0.08);
+box-shadow: 0 0 10px rgba(76,175,135,0.15);
+}
+.str-note {
+font-family: var(–font-display);
+font-size: 17px;
+font-weight: 700;
+color: rgba(232,224,208,0.35);
+transition: color 0.15s;
+}
+.string-btn.active .str-note  { color: var(–gold); }
+.string-btn.in-tune .str-note { color: var(–green); }
+.str-num {
+font-size: 9px;
+font-style: italic;
+font-family: var(–font-body);
+color: rgba(232,224,208,0.18);
+}
+
+/* MIC */
+.mic-section {
+margin-top: 16px;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 10px;
+flex-shrink: 0;
+}
+.mic-btn {
+width: 54px; height: 54px;
+border-radius: 50%;
+border: 1px solid rgba(200,169,110,0.25);
+background: rgba(200,169,110,0.06);
+color: var(–gold);
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s;
+outline: none;
+}
+.mic-btn svg { width: 22px; height: 22px; fill: currentColor; }
+.mic-btn.listening {
+border-color: var(–gold);
+background: rgba(200,169,110,0.1);
+animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+0%,100% { box-shadow: 0 0 12px rgba(200,169,110,0.1); }
+50%      { box-shadow: 0 0 24px rgba(200,169,110,0.3); }
+}
+.mic-status {
+font-size: 11px;
+font-style: italic;
+font-family: var(–font-body);
+color: rgba(232,224,208,0.3);
+letter-spacing: 0.12em;
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="title">D Standard Tuner</div>
+    <div class="subtitle">D · G · C · F · A · D</div>
+  </div>
+
+  <div class="meter-section">
+    <div class="note-name idle" id="noteName">—</div>
+    <div class="cents-label" id="centsLabel">&nbsp;</div>
+
+```
+<div class="needle-wrap">
+  <div class="needle-track">
+    <div class="needle-zone z-green" id="zG"></div>
+    <div class="needle-zone z-yl"    id="zYL"></div>
+    <div class="needle-zone z-yr"    id="zYR"></div>
+    <div class="needle-zone z-rl"    id="zRL"></div>
+    <div class="needle-zone z-rr"    id="zRR"></div>
+    <div class="needle" id="needle"></div>
+  </div>
+</div>
+<div class="meter-labels">
+  <span>−50¢</span><span>&#9837; flat</span><span>in tune</span><span>sharp &#9839;</span><span>+50¢</span>
+</div>
+<div class="freq" id="freqDisplay">&nbsp;</div>
+```
+
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="strings-section">
+    <div class="strings-label">Select string</div>
+    <div class="strings-grid" id="stringsGrid"></div>
+  </div>
+
+  <div class="mic-section">
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+      </svg>
+    </button>
+    <div class="mic-status" id="micStatus">tap to listen</div>
+  </div>
+
+</div>
+<script>
+const D_STANDARD = [
+  { note:'D', string:6, freq:73.42  },
+  { note:'G', string:5, freq:98.00  },
+  { note:'C', string:4, freq:130.81 },
+  { note:'F', string:3, freq:174.61 },
+  { note:'A', string:2, freq:220.00 },
+  { note:'D', string:1, freq:293.66 },
+];
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const A4 = 440;
+
+let audioCtx = null, analyser = null, source = null, stream = null;
+let animFrame = null, isListening = false, selectedString = null;
+
+// Build string buttons
+const grid = document.getElementById(‘stringsGrid’);
+D_STANDARD.forEach((s, i) => {
+const btn = document.createElement(‘div’);
+btn.className = ‘string-btn’;
+btn.id = ‘str’ + i;
+btn.innerHTML = ‘<span class="str-note">’ + s.note + ‘</span><span class="str-num">’ + s.string + ‘</span>’;
+btn.addEventListener(‘click’, () => {
+selectedString = (selectedString === i) ? null : i;
+document.querySelectorAll(’.string-btn’).forEach((b, j) => {
+b.classList.toggle(‘active’, j === selectedString);
+if (j !== selectedString) b.classList.remove(‘in-tune’);
+});
+});
+grid.appendChild(btn);
+});
+
+async function toggleMic() {
+isListening ? stopMic() : await startMic();
+}
+
+async function startMic() {
+try {
+audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+stream = await navigator.mediaDevices.getUserMedia({
+audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+});
+source = audioCtx.createMediaStreamSource(stream);
+analyser = audioCtx.createAnalyser();
+analyser.fftSize = 8192;
+analyser.smoothingTimeConstant = 0.8;
+source.connect(analyser);
+isListening = true;
+document.getElementById(‘micBtn’).classList.add(‘listening’);
+document.getElementById(‘micStatus’).textContent = ‘listening…’;
+document.getElementById(‘noteName’).classList.remove(‘idle’);
+loop();
+} catch(e) {
+document.getElementById(‘micStatus’).textContent = ‘mic denied — allow in Safari settings’;
+}
+}
+
+function stopMic() {
+isListening = false;
+cancelAnimationFrame(animFrame);
+if (source) { source.disconnect(); source = null; }
+if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+if (audioCtx) { audioCtx.close(); audioCtx = null; }
+document.getElementById(‘micBtn’).classList.remove(‘listening’);
+document.getElementById(‘micStatus’).textContent = ‘tap to listen’;
+resetDisplay();
+}
+
+function detectPitch(buf, sampleRate) {
+const HALF = Math.floor(buf.length / 2);
+let rms = 0;
+for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+if (Math.sqrt(rms / buf.length) < 0.008) return -1;
+
+let best = -1, bestCorr = 0, lastCorr = 1, found = false;
+for (let offset = 1; offset < HALF; offset++) {
+let corr = 0;
+for (let i = 0; i < HALF; i++) corr += Math.abs(buf[i] - buf[i + offset]);
+corr = 1 - corr / HALF;
+if (corr > 0.9 && corr > lastCorr) {
+found = true;
+if (corr > bestCorr) { bestCorr = corr; best = offset; }
+} else if (found) break;
+lastCorr = corr;
+}
+return (best === -1 || bestCorr < 0.9) ? -1 : sampleRate / best;
+}
+
+function closestString(freq) {
+if (selectedString !== null) return selectedString;
+let best = 0, bestD = Infinity;
+D_STANDARD.forEach((s, i) => {
+const d = Math.abs(Math.log2(freq / s.freq));
+if (d < bestD) { bestD = d; best = i; }
+});
+return best;
+}
+
+function loop() {
+if (!isListening) return;
+animFrame = requestAnimationFrame(loop);
+const buf = new Float32Array(analyser.fftSize);
+analyser.getFloatTimeDomainData(buf);
+const freq = detectPitch(buf, audioCtx.sampleRate);
+if (freq < 60 || freq > 360) { resetDisplay(); return; }
+
+const si = closestString(freq);
+const cents = 1200 * Math.log2(freq / D_STANDARD[si].freq);
+const clamped = Math.max(-50, Math.min(50, cents));
+const inTune = Math.abs(cents) < 8;
+const abs = Math.abs(cents);
+
+const midi = Math.round(12 * Math.log2(freq / A4)) + 69;
+const noteName = NOTES[((midi % 12) + 12) % 12];
+
+// Note
+const ne = document.getElementById(‘noteName’);
+ne.textContent = noteName;
+ne.className = ’note-name ’ + (inTune ? ‘in-tune’ : ‘off’);
+
+// Cents
+const ce = document.getElementById(‘centsLabel’);
+if (inTune) { ce.textContent = ‘\u2736 in tune \u2736’; ce.className = ‘cents-label in-tune’; }
+else { ce.textContent = (cents > 0 ? ‘+’ : ‘’) + Math.round(cents) + ’\u00a2 ’ + (cents > 0 ? ‘sharp’ : ‘flat’); ce.className = ‘cents-label off’; }
+
+document.getElementById(‘freqDisplay’).textContent = freq.toFixed(1) + ’ Hz’;
+
+// Needle
+const nd = document.getElementById(‘needle’);
+nd.style.left = (50 + (clamped / 50) * 50) + ‘%’;
+nd.className = ‘needle’ + (inTune ? ’ in-tune’ : ‘’);
+
+// Zones
+document.getElementById(‘zG’).classList.toggle(‘active’, abs < 8);
+document.getElementById(‘zYL’).classList.toggle(‘active’, abs >= 8 && abs < 25 && cents < 0);
+document.getElementById(‘zYR’).classList.toggle(‘active’, abs >= 8 && abs < 25 && cents > 0);
+document.getElementById(‘zRL’).classList.toggle(‘active’, abs >= 25 && cents < 0);
+document.getElementById(‘zRR’).classList.toggle(‘active’, abs >= 25 && cents > 0);
+
+// String buttons
+document.querySelectorAll(’.string-btn’).forEach((b, i) => {
+const active = selectedString === null ? i === si : i === selectedString;
+b.classList.toggle(‘active’, active);
+b.classList.toggle(‘in-tune’, active && inTune);
+});
+}
+
+function resetDisplay() {
+document.getElementById(‘noteName’).textContent = ‘—’;
+document.getElementById(‘noteName’).className = ‘note-name idle’;
+document.getElementById(‘centsLabel’).innerHTML = ‘ ’;
+document.getElementById(‘centsLabel’).className = ‘cents-label’;
+document.getElementById(‘freqDisplay’).innerHTML = ‘ ’;
+document.getElementById(‘needle’).style.left = ‘50%’;
+document.getElementById(‘needle’).className = ‘needle’;
+[‘zG’,‘zYL’,‘zYR’,‘zRL’,‘zRR’].forEach(id => document.getElementById(id).classList.remove(‘active’));
+if (selectedString === null)
+document.querySelectorAll(’.string-btn’).forEach(b => b.classList.remove(‘active’,‘in-tune’));
+}
+</script>
+
+</body>
+</html>
