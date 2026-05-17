@@ -7,141 +7,261 @@
 <title>D Standard Tuner</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  height: 100%;
-  overflow: hidden;
-  background: #0a0a0a;
-  color: #e8e0d0;
-  font-family: Georgia, serif;
-}
-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-around;
-  padding: 16px 20px;
-}
+html, body { height: 100%; overflow: hidden; background: #0a0a0a; color: #e8e0d0; font-family: Georgia, serif; }
+body { display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding: 16px 20px; }
+
 h1 { font-size: 10px; letter-spacing: 0.4em; color: #c8a96e; text-transform: uppercase; }
-#note { font-size: 80px; font-weight: bold; color: #333; line-height: 1; }
+
+#note { font-size: 80px; font-weight: bold; color: #333; line-height: 1; transition: color 0.15s; }
+#note.intune { color: #4caf87; }
+#note.off { color: #e8e0d0; }
+
 #info { font-size: 13px; color: #888; text-align: center; height: 18px; }
-.meter { width: 280px; height: 4px; background: #222; border-radius: 2px; position: relative; }
-.meter::before { content:''; position:absolute; left:50%; top:-4px; width:1px; height:12px; background:#c8a96e; opacity:0.3; }
-#needle { position:absolute; top:50%; left:50%; width:14px; height:14px; background:#c8a96e; border-radius:50%; transform:translate(-50%,-50%); transition:left 0.1s; }
+#info.intune { color: #4caf87; }
+#info.off { color: #e8b84b; }
+
+.meter-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.meter { width: 280px; height: 4px; background: #1a1a1a; border-radius: 2px; position: relative; }
+.meter::before { content:’’; position:absolute; left:50%; top:-5px; width:1px; height:14px; background:#c8a96e; opacity:0.35; }
+#needle { position:absolute; top:50%; left:50%; width:14px; height:14px; border-radius:50%; transform:translate(-50%,-50%); transition:left 0.09s, background 0.15s; background:#c8a96e; }
+#needle.intune { background:#4caf87; box-shadow: 0 0 10px rgba(76,175,135,0.7); }
+.meter-labels { display:flex; justify-content:space-between; width:280px; }
+.meter-labels span { font-size:9px; color:#2a2a2a; font-style:italic; }
+
 .strings { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; width:100%; max-width:320px; }
-.str { background:#111; border:1px solid #2a2a2a; border-radius:6px; padding:10px 4px; text-align:center; cursor:pointer; }
-.str.active { border-color:#c8a96e; }
-.str.intune { border-color:#4caf87; }
-.str-note { font-size:16px; font-weight:bold; color:#555; display:block; }
-.str.active .str-note { color:#c8a96e; }
+.str {
+background:#111; border:1px solid #222; border-radius:6px;
+padding:10px 4px; text-align:center; cursor:pointer; transition: all 0.15s;
+}
+.str.selected { border-color:#c8a96e; background:#181410; }
+.str.intune { border-color:#4caf87; background:#0d1a12; }
+.str.playing { border-color:#c8a96e; background:#1c1500; box-shadow: 0 0 14px rgba(200,169,110,0.3); }
+.str-note { font-size:16px; font-weight:bold; color:#444; display:block; }
+.str.selected .str-note { color:#c8a96e; }
 .str.intune .str-note { color:#4caf87; }
-.str-num { font-size:9px; color:#333; display:block; }
-#mic { width:56px; height:56px; border-radius:50%; border:1px solid #c8a96e; background:#111; color:#c8a96e; font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-#mic.on { background:#c8a96e; color:#000; }
-#status { font-size:11px; color:#555; font-style:italic; }
-#log { font-size:10px; color:#c8a96e; text-align:center; height:14px; }
+.str.playing .str-note { color:#c8a96e; }
+.str-num { font-size:9px; color:#2a2a2a; display:block; }
+
+#mic {
+width:56px; height:56px; border-radius:50%;
+border:1px solid #c8a96e; background:#111; color:#c8a96e;
+font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+transition: all 0.2s;
+}
+#mic.on { background:#c8a96e; color:#000; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 10px rgba(200,169,110,0.1);}50%{box-shadow:0 0 22px rgba(200,169,110,0.4);} }
+
+#status { font-size:11px; color:#444; font-style:italic; text-align:center; }
 </style>
+
 </head>
 <body>
 
 <h1>D Standard Tuner</h1>
 <div id="note">—</div>
 <div id="info">&nbsp;</div>
-<div class="meter"><div id="needle"></div></div>
+<div class="meter-wrap">
+  <div class="meter"><div id="needle"></div></div>
+  <div class="meter-labels"><span>−50¢</span><span>flat</span><span>in tune</span><span>sharp</span><span>+50¢</span></div>
+</div>
 <div class="strings" id="strings"></div>
 <div id="mic">🎙</div>
-<div id="status">tap to listen</div>
-<div id="log">&nbsp;</div>
+<div id="status">tap mic to tune</div>
 
 <script>
-var STRINGS=[{note:'D',n:6,freq:73.42},{note:'G',n:5,freq:98},{note:'C',n:4,freq:130.81},{note:'F',n:3,freq:174.61},{note:'A',n:2,freq:220},{note:'D',n:1,freq:293.66}];
-var NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-var selected=-1,listening=false,ctx,analyser,source,stream,raf;
+var STRINGS = [
+  {note:'D', n:6, freq:73.42},
+  {note:'G', n:5, freq:98.00},
+  {note:'C', n:4, freq:130.81},
+  {note:'F', n:3, freq:174.61},
+  {note:'A', n:2, freq:220.00},
+  {note:'D', n:1, freq:293.66}
+];
+var NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+var selected = -1, listening = false;
+var ctx, analyser, source, stream, raf;
+var toneCtx = null, toneOsc = null, toneGain = null, playingIdx = -1, stopTimer = null;
 
-var grid=document.getElementById('strings');
-STRINGS.forEach(function(s,i){
-  var d=document.createElement('div');
-  d.className='str';
-  d.innerHTML='<span class="str-note">'+s.note+'</span><span class="str-num">'+s.n+'</span>';
-  d.addEventListener('click',function(){
-    selected=selected===i?-1:i;
-    document.querySelectorAll('.str').forEach(function(b,j){b.classList.toggle('active',j===selected);if(j!==selected)b.classList.remove('intune');});
+// Build string buttons
+var grid = document.getElementById('strings');
+STRINGS.forEach(function(s, i) {
+  var d = document.createElement('div');
+  d.className = 'str';
+  d.id = 'str' + i;
+  d.innerHTML = '<span class="str-note">' + s.note + '</span><span class="str-num">' + s.n + '</span>';
+  d.addEventListener('click', function() {
+    if (playingIdx === i) {
+      // tap again = stop
+      stopTone();
+    } else {
+      // play this string's reference tone
+      playTone(i);
+    }
+    // also select for tuner
+    selected = selected === i ? -1 : i;
+    updateStrButtons(-1);
   });
   grid.appendChild(d);
 });
 
-document.getElementById('mic').addEventListener('click',function(){
-  if(listening) stopMic(); else startMic();
-});
+function playTone(i) {
+  stopTone();
+  try {
+    toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+    toneOsc = toneCtx.createOscillator();
+    toneGain = toneCtx.createGain();
+    toneOsc.type = 'triangle'; // warmer than sine, more guitar-like
+    toneOsc.frequency.setValueAtTime(STRINGS[i].freq, toneCtx.currentTime);
+    toneGain.gain.setValueAtTime(0, toneCtx.currentTime);
+    toneGain.gain.linearRampToValueAtTime(0.55, toneCtx.currentTime + 0.04);
+    // fade out after 2.5s
+    toneGain.gain.setValueAtTime(0.55, toneCtx.currentTime + 2.3);
+    toneGain.gain.linearRampToValueAtTime(0, toneCtx.currentTime + 2.8);
+    toneOsc.connect(toneGain);
+    toneGain.connect(toneCtx.destination);
+    toneOsc.start();
+    toneOsc.stop(toneCtx.currentTime + 2.9);
+    playingIdx = i;
+    document.getElementById('str' + i).classList.add('playing');
+    stopTimer = setTimeout(function() {
+      playingIdx = -1;
+      document.getElementById('str' + i).classList.remove('playing');
+    }, 2900);
+  } catch(e) {}
+}
 
-function startMic(){
-  document.getElementById('status').textContent='requesting...';
-  if(!navigator.mediaDevices){document.getElementById('log').textContent='no mic API';return;}
-  navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
-    stream=s;
-    ctx=new(window.AudioContext||window.webkitAudioContext)();
-    analyser=ctx.createAnalyser();
-    analyser.fftSize=8192;
-    source=ctx.createMediaStreamSource(stream);
-    source.connect(analyser);
-    listening=true;
-    document.getElementById('mic').classList.add('on');
-    document.getElementById('status').textContent='listening...';
-    document.getElementById('log').textContent='\u00a0';
-    loop();
-  }).catch(function(e){
-    document.getElementById('log').textContent=e.name;
-    document.getElementById('status').textContent='mic error';
+function stopTone() {
+  if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
+  if (playingIdx >= 0) {
+    var el = document.getElementById('str' + playingIdx);
+    if (el) el.classList.remove('playing');
+    playingIdx = -1;
+  }
+  if (toneGain && toneCtx) {
+    try { toneGain.gain.cancelScheduledValues(toneCtx.currentTime); toneGain.gain.linearRampToValueAtTime(0, toneCtx.currentTime + 0.05); } catch(e) {}
+  }
+  setTimeout(function() {
+    if (toneOsc) { try { toneOsc.stop(); } catch(e) {} toneOsc = null; }
+    if (toneCtx) { try { toneCtx.close(); } catch(e) {} toneCtx = null; }
+  }, 100);
+}
+
+function updateStrButtons(activeSi) {
+  document.querySelectorAll('.str').forEach(function(b, j) {
+    if (j === playingIdx) return;
+    b.classList.toggle('selected', j === selected);
+    b.classList.toggle('intune', j === activeSi && activeSi >= 0);
+    if (j !== activeSi) b.classList.remove('intune');
   });
 }
 
-function stopMic(){
-  listening=false;
-  if(raf)cancelAnimationFrame(raf);
-  if(source){try{source.disconnect();}catch(e){}}
-  if(stream)stream.getTracks().forEach(function(t){t.stop();});
-  if(ctx){try{ctx.close();}catch(e){}}
+// Mic
+document.getElementById('mic').addEventListener('click', function() {
+  if (listening) stopMic(); else startMic();
+});
+
+function startMic() {
+  document.getElementById('status').textContent = 'requesting...';
+  if (!navigator.mediaDevices) { document.getElementById('status').textContent = 'not supported'; return; }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
+    stream = s;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 8192;
+    analyser.smoothingTimeConstant = 0.7;
+    source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    listening = true;
+    document.getElementById('mic').classList.add('on');
+    document.getElementById('status').textContent = 'listening...';
+    loop();
+  }).catch(function(e) {
+    document.getElementById('status').textContent = 'mic error: ' + e.name;
+  });
+}
+
+function stopMic() {
+  listening = false;
+  if (raf) cancelAnimationFrame(raf);
+  if (source) { try { source.disconnect(); } catch(e) {} }
+  if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
+  if (ctx) { try { ctx.close(); } catch(e) {} }
   document.getElementById('mic').classList.remove('on');
-  document.getElementById('status').textContent='tap to listen';
-  document.getElementById('note').textContent='—';
-  document.getElementById('note').style.color='#333';
-  document.getElementById('info').innerHTML='&nbsp;';
-  document.getElementById('needle').style.left='50%';
+  document.getElementById('status').textContent = 'tap mic to tune';
+  document.getElementById('note').textContent = '—';
+  document.getElementById('note').className = '';
+  document.getElementById('info').innerHTML = '&nbsp;';
+  document.getElementById('info').className = '';
+  document.getElementById('needle').style.left = '50%';
+  document.getElementById('needle').className = '';
 }
 
-function getPitch(buf,rate){
-  var H=Math.floor(buf.length/2),rms=0;
-  for(var i=0;i<buf.length;i++)rms+=buf[i]*buf[i];
-  if(Math.sqrt(rms/buf.length)<0.01)return -1;
-  var best=-1,bv=0,last=1,found=false;
-  for(var o=1;o<H;o++){
-    var c=0;for(var j=0;j<H;j++)c+=Math.abs(buf[j]-buf[j+o]);
-    c=1-c/H;
-    if(c>0.9&&c>last){found=true;if(c>bv){bv=c;best=o;}}else if(found)break;
-    last=c;
+function getPitch(buf, rate) {
+  var H = Math.floor(buf.length / 2), rms = 0;
+  for (var i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+  if (Math.sqrt(rms / buf.length) < 0.01) return -1;
+  var best = -1, bv = 0, last = 1, found = false;
+  for (var o = 1; o < H; o++) {
+    var c = 0;
+    for (var j = 0; j < H; j++) c += Math.abs(buf[j] - buf[j + o]);
+    c = 1 - c / H;
+    if (c > 0.9 && c > last) { found = true; if (c > bv) { bv = c; best = o; } }
+    else if (found) break;
+    last = c;
   }
-  return(best===-1||bv<0.9)?-1:rate/best;
+  return (best === -1 || bv < 0.9) ? -1 : rate / best;
 }
 
-function loop(){
-  if(!listening)return;
-  raf=requestAnimationFrame(loop);
-  var buf=new Float32Array(analyser.fftSize);
+function loop() {
+  if (!listening) return;
+  raf = requestAnimationFrame(loop);
+  var buf = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(buf);
-  var freq=getPitch(buf,ctx.sampleRate);
-  var ne=document.getElementById('note');
-  if(freq<60||freq>370){ne.textContent='—';ne.style.color='#333';document.getElementById('info').innerHTML='&nbsp;';document.getElementById('needle').style.left='50%';return;}
-  var si=0,bd=Infinity;
-  if(selected>=0)si=selected;
-  else STRINGS.forEach(function(s,i){var d=Math.abs(Math.log2(freq/s.freq));if(d<bd){bd=d;si=i;}});
-  var cents=1200*Math.log2(freq/STRINGS[si].freq);
-  var clamped=Math.max(-50,Math.min(50,cents));
-  var inTune=Math.abs(cents)<8;
-  var midi=Math.round(12*Math.log2(freq/440))+69;
-  ne.textContent=NOTES[((midi%12)+12)%12];
-  ne.style.color=inTune?'#4caf87':'#e8e0d0';
-  document.getElementById('info').textContent=(inTune?'✦ in tune ✦':(cents>0?'+':'')+Math.round(cents)+'¢')+' · '+freq.toFixed(1)+' Hz';
-  document.getElementById('needle').style.left=(50+clamped)+'%';
-  document.querySelectorAll('.str').forEach(function(b,i){var a=selected<0?i===si:i===selected;b.classList.toggle('active',a&&!inTune);b.classList.toggle('intune',a&&inTune);});
+  var freq = getPitch(buf, ctx.sampleRate);
+  var ne = document.getElementById('note');
+  var info = document.getElementById('info');
+  var ndl = document.getElementById('needle');
+
+  if (freq < 60 || freq > 370) {
+    ne.textContent = '—'; ne.className = '';
+    info.innerHTML = '&nbsp;'; info.className = '';
+    ndl.style.left = '50%'; ndl.className = '';
+    updateStrButtons(-1);
+    return;
+  }
+
+  // Find closest D-standard string
+  var si = 0, bd = Infinity;
+  if (selected >= 0) {
+    si = selected;
+  } else {
+    STRINGS.forEach(function(s, i) {
+      var d = Math.abs(Math.log2(freq / s.freq));
+      if (d < bd) { bd = d; si = i; }
+    });
+  }
+
+  var cents = 1200 * Math.log2(freq / STRINGS[si].freq);
+  var clamped = Math.max(-50, Math.min(50, cents));
+  var inTune = Math.abs(cents) < 8;
+  var midi = Math.round(12 * Math.log2(freq / 440)) + 69;
+  var noteName = NOTES[((midi % 12) + 12) % 12];
+
+  ne.textContent = noteName;
+  ne.className = inTune ? 'intune' : 'off';
+
+  if (inTune) {
+    info.textContent = '✦ in tune ✦';
+    info.className = 'intune';
+  } else {
+    info.textContent = (cents > 0 ? '+' : '') + Math.round(cents) + '¢  ' + (cents > 0 ? 'sharp ↓' : 'flat ↑');
+    info.className = 'off';
+  }
+
+  ndl.style.left = (50 + clamped) + '%';
+  ndl.className = inTune ? 'intune' : '';
+
+  updateStrButtons(inTune ? si : -1);
 }
 </script>
 
